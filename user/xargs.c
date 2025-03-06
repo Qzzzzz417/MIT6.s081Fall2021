@@ -3,52 +3,87 @@
 #include "user/user.h"
 
 #define MAXARGLEN 256
-void get_single_arg(char* buf, int* offset, int* start, int* len);
+
+int readline(char* new_argv[], int ori_argc); 
+int divline(char* new_argv[], int ori_argc, char* buf, int len); 
+// much source code reference: https://github.com/PKUFlyingPig/MIT6.S081-2020fall/blob/master/reports/Utils.md
 int main(int argc, char* argv[]) {
-	
-	char buf[512];
-	char addarg[MAXARG];
-	char command[MAXARGLEN + 1];
-	int offset;
-	int start, len;
 
-							
-	memset(addarg, 0, MAXARG);
+	char* new_argv[MAXARG];
 
-	memset(command, 0, MAXARGLEN+1);
+	char* command;
+
 	if (argc < 2) {
-		fprintf(2, "Usage: xargs command [commandargument...]\n");
+		fprintf(2, "Usage: xargs command [args...]\n");
 		exit(1);
 	}
-	memcpy(command, argv[1], sizeof(argv[1]));
-	while (read(0, buf, MAXARG)) {
-//		offset = 0;
-//		start = 0;
-//		len = 0;
-//		while (offset < strlen(buf)) {
-//			get_single_arg(buf, &offset, &start, &len);
-//			memcpy(addarg, buf + start, len);
-//			fprintf(1, "addarg: %s\n", addarg);
-			exec_command(commmand, argv, 2, argc - 1, addarg);		
-		}		
+
+
+	command = malloc(strlen(argv[1]) + 1);
+	memcpy(command, argv[1], strlen(argv[1]) + 1);
+
+	// append original arguments 
+	for (int i = 1; i < argc; i++) {
+		new_argv[i - 1] = malloc(strlen(argv[i]) + 1);
+		new_argv[i - 1] = argv[i];
 	}
 
-	
+	// append additional arguments
+	while (readline(new_argv, argc - 1)) {
+		
+		int pid;
+		pid = fork();
+		if (pid == 0) {
+			exec(command, new_argv);
+			fprintf(2, "exec failed.\n");
+			exit(1);
+		}
+		// why fork: shell call user program using child process.
+		wait(0);
+		
+	}
+
+
 	exit(0);
 }
-void get_single_arg(char* buf, int* offset, int* start, int* len) {
-	int i;
-	*start = *offset;
-	*len = 0;
-	for (i = *offset; i < strlen(buf);i++) {
-		if (buf[i] == '\n') {
-			*offset = i + 1;
+
+int readline(char* new_argv[], int ori_argc) {
+	char buf[MAXARGLEN];
+	int len = 0;
+	int	ri = 0;
+	memset(buf, 0, MAXARGLEN);
+	while (read(0, buf+ri, 1)) {
+		if (buf[ri] == '\n') {
 			break;
-		}	
-		(*len)++;
-		(*offset)++;
+		}
+		len++;
+		ri++;
 	}
+
+	return divline(new_argv, ori_argc, buf, len);
 }
-void exec_command(char* command, char* argv[], int start, int end, char* addarg) {
-	
-	 }
+
+int divline(char* new_argv[], int ori_argc, char* buf, int len) {
+	int start = 0;
+	int singlen = 0;
+	int count = 1;
+	if (len == 0) {
+		return 0;
+	}
+	for (int i = 0; i < len; i++) {
+		if (buf[i] == ' ') {
+			new_argv[ori_argc] = malloc(singlen+1);
+			memcpy(new_argv[ori_argc++], buf+start, singlen+1);
+			count++;
+			start = i+1;
+			singlen = 0;
+			continue;
+		}
+		singlen++;
+
+	}
+	new_argv[ori_argc] = malloc(singlen);
+	memcpy(new_argv[ori_argc], buf+start, singlen);
+	new_argv[ori_argc][singlen] = 0;
+	return count;
+}
