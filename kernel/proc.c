@@ -292,6 +292,10 @@ fork(void)
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
+	// copy trace mask to child
+	np->trace = p->trace;
+	np->tracemask = p->tracemask;
+
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
 
