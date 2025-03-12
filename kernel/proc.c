@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sysinfo.h"
 
 struct cpu cpus[NCPU];
 
@@ -337,6 +338,18 @@ reparent(struct proc *p)
   }
 }
 
+// fill out amount of process whose state is not UNUSED
+uint64 numproc(void) {
+	struct proc *pp;
+	
+	uint64 numproc = 0;
+	for (pp = proc; pp < &proc[NPROC]; pp++) {
+		if (pp && pp->state != UNUSED) {
+			numproc++;
+		}
+	}
+	return numproc;
+}
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait().

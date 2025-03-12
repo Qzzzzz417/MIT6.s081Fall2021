@@ -8,12 +8,14 @@
 #include "spinlock.h"
 #include "riscv.h"
 #include "defs.h"
+#include "sysinfo.h"
 
 void freerange(void *pa_start, void *pa_end);
 
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
 
+//static uint64 freebytes;
 struct run {
   struct run *next;
 };
@@ -54,6 +56,8 @@ kfree(void *pa)
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
+	// my original answer
+	// freebytes += PGSIZE;	
   r = (struct run*)pa;
 
   acquire(&kmem.lock);
@@ -76,7 +80,29 @@ kalloc(void)
     kmem.freelist = r->next;
   release(&kmem.lock);
 
-  if(r)
+  if(r) 
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+// reference: https://github.com/PKUFlyingPig/MIT6.S081-2020fall/blob/master/reports/syscall.md
+uint64 freemem(void)
+{
+	struct run* r;
+	uint64 freepage = 0;
+	acquire(&kmem.lock);
+	r = kmem.freelist;
+	while(r) {
+		freepage += 1;
+		r = r->next;
+	}
+	release(&kmem.lock);
+	return (freepage << 12);
+}
+
+
+// my original answer, error answer
+/*void fillout_femem(struct sysinfo* sinfo) {
+	sinfo->freemem = freebytes;
+}*/
+
