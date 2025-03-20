@@ -20,6 +20,7 @@ sys_exit(void)
 uint64
 sys_getpid(void)
 {
+	myproc()->uksharedpg->pid = myproc()->pid;
   return myproc()->pid;
 }
 
@@ -107,3 +108,4 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
