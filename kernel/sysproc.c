@@ -7,6 +7,7 @@
 #include "spinlock.h"
 #include "proc.h"
 
+#define MAXBIT 4096
 uint64
 sys_exit(void)
 {
@@ -82,6 +83,36 @@ int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+		uint64 stvm;
+		int pagenum;
+		uint64 bitmask;
+		
+		if(argaddr(0, &stvm) < 0 || argint(1, &pagenum) < 0 || argaddr(2, &bitmask) < 0) {
+			return -1;	
+		}
+
+		// using char tmpbitmask[MAXBIT] will make a kernel trap
+		uint64 tmpbitmask;
+	  uint64	vm;
+		pte_t* pte;
+		int bit;
+
+		tmpbitmask = 0;
+		for (bit = 0, vm = stvm; vm < stvm + pagenum * PGSIZE; bit += 1, vm += PGSIZE) {
+			if ((pte = walk(myproc()->pagetable, vm, 0)) == 0) {
+				return -1;
+			}
+			
+			// previous error: *pte | PTE_A
+			if (*pte & PTE_A) {
+				tmpbitmask |= 1 << bit;
+				*pte &= ~PTE_A;	
+			}
+		}
+		// question: why use copyout instead of using bitmask directly
+		if (copyout(myproc()->pagetable, bitmask, (char*)&tmpbitmask, pagenum) < 0) {
+			return -1;
+		}
   return 0;
 }
 #endif
